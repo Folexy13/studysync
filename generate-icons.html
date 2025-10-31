@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generate StudySync AI Icons</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      text-align: center;
+    }
+    .icon-preview {
+      display: flex;
+      justify-content: space-around;
+      margin: 30px 0;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .icon-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    canvas {
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 10px;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .instructions {
+      background: #fffbeb;
+      border: 1px solid #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: left;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>📚 StudySync AI Icon Generator</h1>
+  <p>Generate placeholder icons for development. Replace with professional designs for production.</p>
+
+  <div class="instructions">
+    <h3>Instructions:</h3>
+    <ol>
+      <li>Click "Generate Icons" below</li>
+      <li>Right-click each icon and "Save image as..."</li>
+      <li>Save to: <code>assets/icons/</code> folder</li>
+      <li>Filenames: <code>icon16.png</code>, <code>icon32.png</code>, <code>icon48.png</code>, <code>icon128.png</code></li>
+    </ol>
+  </div>
+
+  <button onclick="generateIcons()">Generate Icons</button>
+
+  <div class="icon-preview" id="iconPreview"></div>
+
+  <script>
+    function generateIcons() {
+      const sizes = [16, 32, 48, 128];
+      const preview = document.getElementById('iconPreview');
+      preview.innerHTML = '';
+
+      sizes.forEach(size => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Create gradient background
+        const gradient = ctx.createLinearGradient(0, 0, size, size);
+        gradient.addColorStop(0, '#667eea');
+        gradient.addColorStop(1, '#764ba2');
+        
+        // Draw background circle
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw shield/book icon in white
+        ctx.fillStyle = 'white';
+        const scale = size / 128;
+        
+        // Shield path (simplified)
+        ctx.beginPath();
+        ctx.moveTo(size / 2, size * 0.2);
+        ctx.lineTo(size * 0.25, size * 0.35);
+        ctx.lineTo(size * 0.25, size * 0.6);
+        ctx.quadraticCurveTo(size * 0.25, size * 0.85, size / 2, size * 0.9);
+        ctx.quadraticCurveTo(size * 0.75, size * 0.85, size * 0.75, size * 0.6);
+        ctx.lineTo(size * 0.75, size * 0.35);
+        ctx.closePath();
+        ctx.fill();
+
+        // Draw inner shield detail
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(size / 2, size * 0.3);
+        ctx.lineTo(size * 0.35, size * 0.4);
+        ctx.lineTo(size * 0.35, size * 0.6);
+        ctx.quadraticCurveTo(size * 0.35, size * 0.75, size / 2, size * 0.8);
+        ctx.quadraticCurveTo(size * 0.65, size * 0.75, size * 0.65, size * 0.6);
+        ctx.lineTo(size * 0.65, size * 0.4);
+        ctx.closePath();
+        ctx.fill();
+
+        // Add to preview
+        const iconItem = document.createElement('div');
+        iconItem.className = 'icon-item';
+        iconItem.innerHTML = `
+          <canvas width="${size}" height="${size}"></canvas>
+          <strong>${size}x${size}</strong>
+          <button onclick="downloadIcon(this.parentElement.querySelector('canvas'), 'icon${size}.png')">
+            Download
+          </button>
+        `;
+        
+        const newCanvas = iconItem.querySelector('canvas');
+        newCanvas.getContext('2d').drawImage(canvas, 0, 0);
+        
+        preview.appendChild(iconItem);
+      });
+    }
+
+    function downloadIcon(canvas, filename) {
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    // Auto-generate on load
+    window.addEventListener('load', generateIcons);
+  </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "name": "studysync-ai",
+  "version": "1.0.0",
+  "description": "Your intelligent study companion powered by Chrome's built-in AI. Transform any content into study materials instantly.",
+  "author": "StudySync AI Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/studysync-ai/chrome-extension.git"
+  },
+  "keywords": [
+    "chrome-extension",
+    "ai",
+    "gemini-nano",
+    "study",
+    "education",
+    "learning",
+    "summarization",
+    "translation",
+    "flashcards",
+    "questions"
+  ],
+  "scripts": {
+    "test": "echo \"Run manual tests as described in TESTING.md\"",
+    "generate-icons": "open generate-icons.html"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {},
+  "dependencies": {}
+}

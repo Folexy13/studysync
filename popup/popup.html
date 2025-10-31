@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudySync AI</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 18c-3.87-.78-7-4.85-7-9V8.3l7-3.11v14.82z"/>
+        </svg>
+        <h1>StudySync AI</h1>
+      </div>
+      <button id="settingsBtn" class="icon-btn" title="Settings">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+          <path fill-rule="evenodd" d="M9 2a1 1 0 000 2 5 5 0 016 6 1 1 0 102 0A7 7 0 009 2zm0 14a1 1 0 100 2 5 5 0 01-6-6 1 1 0 10-2 0 7 7 0 007 7z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Status indicator -->
+    <div id="statusBar" class="status-bar">
+      <div class="status-indicator">
+        <span class="status-dot"></span>
+        <span id="statusText">Checking AI availability...</span>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="section">
+      <h2 class="section-title">Quick Actions</h2>
+      <div class="actions-grid">
+        <button class="action-btn" data-action="summarize">
+          <div class="action-icon">📄</div>
+          <div class="action-label">Summarize</div>
+        </button>
+        <button class="action-btn" data-action="translate">
+          <div class="action-icon">🌐</div>
+          <div class="action-label">Translate</div>
+        </button>
+        <button class="action-btn" data-action="questions">
+          <div class="action-icon">❓</div>
+          <div class="action-label">Questions</div>
+        </button>
+        <button class="action-btn" data-action="flashcards">
+          <div class="action-icon">🗂️</div>
+          <div class="action-label">Flashcards</div>
+        </button>
+        <button class="action-btn" data-action="proofread">
+          <div class="action-icon">✍️</div>
+          <div class="action-label">Proofread</div>
+        </button>
+        <button class="action-btn" data-action="explain">
+          <div class="action-icon">💡</div>
+          <div class="action-label">Explain</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Selected Text Preview -->
+    <div id="selectionPreview" class="selection-preview" style="display: none;">
+      <div class="selection-header">
+        <span>Selected Text</span>
+        <button id="clearSelection" class="text-btn">Clear</button>
+      </div>
+      <div id="selectionText" class="selection-text"></div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="section">
+      <h2 class="section-title">Custom Input</h2>
+      <textarea 
+        id="customInput" 
+        class="custom-input" 
+        placeholder="Paste text here or select text on the page..."
+        rows="4"
+      ></textarea>
+      <button id="processBtn" class="primary-btn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;">
+          <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm1 11.5l-4-3 4-3v6z"/>
+        </svg>
+        Process Text
+      </button>
+    </div>
+
+    <!-- Study Panel Button -->
+    <div class="section">
+      <button id="openPanel" class="secondary-btn full-width">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;">
+          <path d="M4 2h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2zm0 2v8h8V4H4z"/>
+        </svg>
+        Open Study Panel
+      </button>
+    </div>
+
+    <!-- Stats -->
+    <div id="stats" class="stats">
+      <div class="stat-item">
+        <div class="stat-value" id="totalActions">0</div>
+        <div class="stat-label">Actions</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="savedMaterials">0</div>
+        <div class="stat-label">Saved</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <a href="#" id="helpLink" class="footer-link">Help</a>
+      <span class="footer-divider">•</span>
+      <a href="#" id="feedbackLink" class="footer-link">Feedback</a>
+      <span class="footer-divider">•</span>
+      <span class="footer-text">v1.0.0</span>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
