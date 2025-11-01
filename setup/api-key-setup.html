@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudySync - AI Setup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .setup-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .logo p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .status-card {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 25px;
+        }
+
+        .status-card.error {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .status-card.success {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .step {
+            margin: 25px 0;
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
+            text-align: center;
+            line-height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .step h3 {
+            display: inline-block;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .step p {
+            margin-left: 40px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .input-group {
+            margin: 20px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: monospace;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .help-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .help-link:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .success-message .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .feature-list {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .feature-list h4 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .feature-list ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            color: #666;
+        }
+
+        .feature-list li:before {
+            content: "✨";
+            margin-right: 10px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <div class="logo">
+            <h1>📚 StudySync AI Setup</h1>
+            <p>Configure AI for your study assistant</p>
+        </div>
+
+        <div class="status-card" id="status-card">
+            <strong>⚠️ Chrome Built-in AI Not Available</strong>
+            <p style="margin-top: 10px;">No worries! StudySync can use Gemini API instead, which actually provides better features including image analysis.</p>
+        </div>
+
+        <div id="setup-form">
+            <div class="step">
+                <span class="step-number">1</span>
+                <h3>Get Your Free API Key</h3>
+                <p>Visit <a href="https://makersuite.google.com/app/apikey" target="_blank" class="help-link">Google AI Studio</a> and click "Create API Key". It's free and takes just 30 seconds!</p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                <h3>Enter Your API Key</h3>
+                <p>Paste your API key below. It should start with <code>AIza...</code></p>
+            </div>
+
+            <div class="input-group">
+                <label for="api-key">Gemini API Key</label>
+                <input type="text" 
+                       id="api-key" 
+                       placeholder="AIza..." 
+                       autocomplete="off">
+            </div>
+
+            <div class="button-group">
+                <button class="btn-secondary" id="skip-btn">Skip for Now</button>
+                <button class="btn-primary" id="save-btn">Save & Enable AI</button>
+            </div>
+        </div>
+
+        <div class="success-message" id="success-message">
+            <div class="icon">✅</div>
+            <h2>AI Successfully Configured!</h2>
+            <p style="margin-top: 10px; color: #666;">StudySync is now ready with advanced AI features.</p>
+            <button class="btn-primary" id="close-btn" style="margin-top: 20px;">Start Using StudySync</button>
+        </div>
+
+        <div class="feature-list">
+            <h4>🎯 What You'll Get with Gemini API:</h4>
+            <ul>
+                <li>Text summarization and explanation</li>
+                <li>Study question generation</li>
+                <li>Flashcard creation</li>
+                <li>Multi-language translation</li>
+                <li><strong>Image analysis</strong> (diagrams, handwritten notes)</li>
+                <li><strong>Multimodal AI</strong> (text + image combined)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- External script to comply with CSP -->
+    <script src="api-key-setup.js"></script>
+</body>
+</html>

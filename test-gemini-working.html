@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini API Test - Working Version</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .api-key-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .api-key-display {
+            font-family: monospace;
+            background: #fff;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 100px;
+            margin: 10px 0;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f0f8ff;
+            border-radius: 10px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Gemini API Test - StudySync</h1>
+        
+        <div class="api-key-section">
+            <h2>📋 API Key Configuration</h2>
+            <label for="api-key-input">Enter your Gemini API Key:</label>
+            <input type="text"
+                   id="api-key-input"
+                   value="AIzaSyDQ7VsFWBtTtJASFqAZqfTyFvcNkXPHt1A"
+                   placeholder="Enter your API key (AIza...)"
+                   style="width: 100%; padding: 10px; margin: 10px 0; border: 2px solid #e0e0e0; border-radius: 5px; font-family: monospace;">
+            <button onclick="updateApiKey()">Update API Key</button>
+            <button onclick="clearApiKey()">Clear</button>
+            <p><strong>Status:</strong> <span id="key-status">Ready to test</span></p>
+            <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                Get a free API key at: <a href="https://makersuite.google.com/app/apikey" target="_blank" style="color: #667eea;">Google AI Studio</a>
+            </p>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Quick Test</h2>
+            <button onclick="testSimpleAPI()">Test Simple API Call</button>
+            <button onclick="testWithDifferentModels()">Test All Model Versions</button>
+            <button onclick="testDirectAPI()">Test Direct API</button>
+            <div id="test-result" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 Test StudySync Operations</h2>
+            <textarea id="test-text" placeholder="Enter text to test...">The Google Chrome Built-in AI Challenge 2025 is an exciting opportunity.</textarea>
+            <button onclick="testSummarize()">Test Summarize</button>
+            <button onclick="testQuestions()">Test Questions</button>
+            <button onclick="testExplain()">Test Explain</button>
+            <div id="operation-result" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📝 Working Code for Your Extension</h2>
+            <button onclick="showWorkingCode()">Show Working Code</button>
+            <div id="code-result" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // API key variable (can be updated by user)
+        let API_KEY = 'AIzaSyDQ7VsFWBtTtJASFqAZqfTyFvcNkXPHt1A';
+        
+        // Update API key from input
+        function updateApiKey() {
+            const input = document.getElementById('api-key-input');
+            const newKey = input.value.trim();
+            
+            if (!newKey) {
+                alert('Please enter a valid API key');
+                return;
+            }
+            
+            if (!newKey.startsWith('AIza')) {
+                if (!confirm('This doesn\'t look like a valid Gemini API key (should start with AIza). Continue anyway?')) {
+                    return;
+                }
+            }
+            
+            API_KEY = newKey;
+            document.getElementById('key-status').innerHTML = '🔄 Key updated - click test to verify';
+            
+            // Save to localStorage
+            localStorage.setItem('geminiApiKey', API_KEY);
+            
+            // Clear previous results
+            document.getElementById('test-result').style.display = 'none';
+            document.getElementById('operation-result').style.display = 'none';
+            
+            console.log('API key updated:', API_KEY.substring(0, 10) + '...');
+        }
+        
+        // Clear API key
+        function clearApiKey() {
+            document.getElementById('api-key-input').value = '';
+            API_KEY = '';
+            localStorage.removeItem('geminiApiKey');
+            document.getElementById('key-status').innerHTML = '⚠️ No API key set';
+        }
+        
+        // Load saved API key on page load
+        function loadSavedApiKey() {
+            const savedKey = localStorage.getItem('geminiApiKey');
+            if (savedKey) {
+                API_KEY = savedKey;
+                document.getElementById('api-key-input').value = savedKey;
+                console.log('Loaded saved API key');
+            }
+        }
+        
+        // Test simple API call with correct format
+        async function testSimpleAPI() {
+            if (!API_KEY) {
+                alert('Please enter an API key first');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('test-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.innerHTML = `Testing API key: ${API_KEY.substring(0, 10)}...`;
+
+            try {
+                // Using the latest v1 endpoint with gemini-2.5-flash
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: 'Say hello if this works'
+                            }]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Response:', data);
+
+                if (response.ok && data.candidates) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `✅ API Key is WORKING!\n\nResponse: ${data.candidates[0].content.parts[0].text}`;
+                    document.getElementById('key-status').innerHTML = '✅ Working';
+                } else {
+                    // Try older models as fallback
+                    await testFallbackModels();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                // Try older models as fallback
+                await testFallbackModels();
+            }
+        }
+
+        // Test fallback models
+        async function testFallbackModels() {
+            const resultDiv = document.getElementById('test-result');
+            
+            // Try different model versions
+            const models = [
+                'gemini-1.5-flash',
+                'gemini-1.5-pro',
+                'gemini-pro'
+            ];
+            
+            for (const model of models) {
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${API_KEY}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: 'Say hello if this works'
+                                }]
+                            }]
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok && data.candidates) {
+                        resultDiv.className = 'result success';
+                        resultDiv.innerHTML = `✅ API Key is WORKING with ${model}!\n\nResponse: ${data.candidates[0].content.parts[0].text}`;
+                        document.getElementById('key-status').innerHTML = `✅ Working with ${model}`;
+                        window.WORKING_MODEL = model;
+                        return; // Success, stop trying
+                    }
+                } catch (error) {
+                    console.log(`Model ${model} failed:`, error);
+                }
+            }
+            
+            // If we get here, all models failed
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `❌ All models failed. Please check:\n1. API key is correct\n2. Gemini API is enabled\n3. Try regenerating the key`;
+        }
+
+        // Test different models
+        async function testWithDifferentModels() {
+            const resultDiv = document.getElementById('test-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            
+            const models = [
+                { name: 'gemini-2.5-flash', endpoint: 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent' },
+                { name: 'gemini-1.5-flash', endpoint: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent' },
+                { name: 'gemini-1.5-pro', endpoint: 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent' },
+                { name: 'gemini-pro', endpoint: 'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent' }
+            ];
+
+            let results = 'Testing all models:\n\n';
+            let workingEndpoint = null;
+
+            for (const model of models) {
+                results += `Testing ${model.name}... `;
+                resultDiv.innerHTML = results + '⏳';
+                
+                try {
+                    const response = await fetch(`${model.endpoint}?key=${API_KEY}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: 'test' }] }]
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok && data.candidates) {
+                        results += '✅ WORKING\n';
+                        if (!workingEndpoint) {
+                            workingEndpoint = model.endpoint;
+                            window.WORKING_ENDPOINT = workingEndpoint;
+                        }
+                    } else {
+                        results += `❌ Failed (${data.error?.message || 'Unknown error'})\n`;
+                    }
+                } catch (error) {
+                    results += `❌ Error (${error.message})\n`;
+                }
+            }
+
+            resultDiv.className = workingEndpoint ? 'result success' : 'result error';
+            resultDiv.innerHTML = results + (workingEndpoint ? `\n✅ Found working endpoint: ${workingEndpoint}` : '\n❌ No working endpoints found');
+        }
+
+        // Test direct API call
+        async function testDirectAPI() {
+            const resultDiv = document.getElementById('test-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.innerHTML = 'Testing direct API call...';
+
+            // Direct fetch with latest model
+            fetch('https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=' + API_KEY, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: 'What is 2+2?'
+                        }]
+                    }]
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.candidates) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = '✅ Direct API call successful!\n\n' + data.candidates[0].content.parts[0].text;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = '❌ Error: ' + (data.error?.message || 'Unknown error');
+                }
+            })
+            .catch(error => {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '❌ Network error: ' + error.message;
+            });
+        }
+
+        // Test operations
+        async function testSummarize() {
+            await testOperation('Summarize this text in 2 sentences: ');
+        }
+
+        async function testQuestions() {
+            await testOperation('Generate 3 study questions from this text: ');
+        }
+
+        async function testExplain() {
+            await testOperation('Explain this concept simply: ');
+        }
+
+        async function testOperation(prompt) {
+            const text = document.getElementById('test-text').value;
+            const resultDiv = document.getElementById('operation-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.innerHTML = 'Processing...';
+
+            const endpoint = window.WORKING_ENDPOINT || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
+
+            try {
+                const response = await fetch(`${endpoint}?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt + text }] }]
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.candidates) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = '✅ Success!\n\n' + data.candidates[0].content.parts[0].text;
+                } else {
+                    throw new Error(data.error?.message || 'Operation failed');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '❌ Error: ' + error.message;
+            }
+        }
+
+        // Show working code
+        function showWorkingCode() {
+            const endpoint = window.WORKING_ENDPOINT || 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
+            const model = window.WORKING_MODEL || 'gemini-2.5-flash';
+            const resultDiv = document.getElementById('code-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            
+            const code = `// ✅ WORKING CODE FOR STUDYSYNC EXTENSION
+// Using the latest Gemini model: ${model}
+
+// Configuration
+const GEMINI_API_KEY = '${API_KEY}';
+const GEMINI_ENDPOINT = '${endpoint}';
+const GEMINI_MODEL = '${model}';
+
+// Function to call Gemini API
+async function callGeminiAPI(prompt) {
+    try {
+        const response = await fetch(\`\${GEMINI_ENDPOINT}?key=\${GEMINI_API_KEY}\`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: prompt
+                    }]
+                }]
+            })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok && data.candidates) {
+            return data.candidates[0].content.parts[0].text;
+        } else {
+            throw new Error(data.error?.message || 'API request failed');
+        }
+    } catch (error) {
+        console.error('Gemini API error:', error);
+        // Fallback to basic processing
+        return basicFallback(prompt);
+    }
+}
+
+// Basic fallback function
+function basicFallback(prompt) {
+    if (prompt.includes('summarize')) {
+        return 'Summary: ' + prompt.substring(0, 100) + '...';
+    } else if (prompt.includes('questions')) {
+        return '1. What is the main topic?\\n2. Why is this important?\\n3. How does this apply?';
+    } else {
+        return 'Processing: ' + prompt.substring(0, 50) + '...';
+    }
+}
+
+// StudySync specific functions
+async function summarizeText(text) {
+    return await callGeminiAPI('Summarize this text in 2-3 sentences: ' + text);
+}
+
+async function generateQuestions(text) {
+    return await callGeminiAPI('Generate 5 study questions from this text: ' + text);
+}
+
+async function createFlashcards(text) {
+    return await callGeminiAPI('Create 5 flashcards from this text. Format: Q: [question] | A: [answer]\\n\\nText: ' + text);
+}
+
+// Store API key in Chrome storage
+if (typeof chrome !== 'undefined' && chrome.storage) {
+    chrome.storage.sync.set({ 
+        geminiApiKey: GEMINI_API_KEY,
+        geminiEndpoint: GEMINI_ENDPOINT
+    });
+}
+
+console.log('✅ Gemini API configured and ready!');`;
+
+            resultDiv.innerHTML = `Copy this code to your extension:\n\n${code}`;
+        }
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            loadSavedApiKey();
+            
+            // Only auto-test if we have an API key
+            if (API_KEY) {
+                setTimeout(() => {
+                    testSimpleAPI();
+                }, 500);
+            } else {
+                document.getElementById('key-status').innerHTML = '⚠️ Enter an API key to begin';
+            }
+        });
+    </script>
+</body>
+</html>

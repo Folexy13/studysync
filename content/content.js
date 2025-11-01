@@ -15,40 +15,48 @@ document.addEventListener('selectionchange', () => {
 });
 
 // Listen for messages from background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('📨 Content script received message:', message.type);
-  
-  try {
-    switch (message.type) {
-      case 'GET_SELECTION':
-        sendResponse({ text: currentSelection });
-        break;
+if (chrome.runtime?.id) {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('📨 Content script received message:', message.type);
+    
+    try {
+      // Check if extension context is still valid
+      if (!chrome.runtime?.id) {
+        sendResponse({ error: 'Extension context invalidated' });
+        return false;
+      }
       
-      case 'GET_PAGE_CONTENT':
-        const content = extractPageContent();
-        sendResponse({ content });
-        break;
-      
-      case 'HIGHLIGHT_TEXT':
-        highlightText(message.text);
-        sendResponse({ success: true });
-        break;
-      
-      case 'SHOW_TOOLTIP':
-        showTooltip(message.text, message.position);
-        sendResponse({ success: true });
-        break;
-      
-      default:
-        sendResponse({ error: 'Unknown message type' });
+      switch (message.type) {
+        case 'GET_SELECTION':
+          sendResponse({ text: currentSelection });
+          break;
+        
+        case 'GET_PAGE_CONTENT':
+          const content = extractPageContent();
+          sendResponse({ content });
+          break;
+        
+        case 'HIGHLIGHT_TEXT':
+          highlightText(message.text);
+          sendResponse({ success: true });
+          break;
+        
+        case 'SHOW_TOOLTIP':
+          showTooltip(message.text, message.position);
+          sendResponse({ success: true });
+          break;
+        
+        default:
+          sendResponse({ error: 'Unknown message type' });
+      }
+    } catch (error) {
+      console.error('❌ Content script error:', error);
+      sendResponse({ error: error.message });
     }
-  } catch (error) {
-    console.error('❌ Content script error:', error);
-    sendResponse({ error: error.message });
-  }
-  
-  return true; // Keep channel open for async response
-});
+    
+    return true; // Keep channel open for async response
+  });
+}
 
 /**
  * Extract readable content from page
@@ -239,8 +247,49 @@ function showFloatingButton(x, y) {
       e.preventDefault();
       e.stopPropagation();
       
-      // Open side panel
-      await chrome.runtime.sendMessage({ type: 'OPEN_PANEL' });
+      // Get selected text
+      const selection = window.getSelection();
+      const selectedText = selection.toString().trim();
+      
+      try {
+        // Check if extension context is still valid
+        if (!chrome.runtime?.id) {
+          console.warn('Extension context invalidated, reloading...');
+          window.location.reload();
+          return;
+        }
+        
+        // Store the selected text for the popup to access
+        if (selectedText) {
+          await chrome.storage.local.set({
+            selectedText: selectedText,
+            timestamp: Date.now()
+          });
+        }
+        
+        // Instead of opening side panel, show tooltip with instructions
+        // The popup will open when user clicks the extension icon
+        showTooltip('Text saved! Click the StudySync extension icon or right-click for quick actions.', {
+          x: e.pageX,
+          y: e.pageY - 50
+        });
+        
+        // Hide the floating button after click
+        hideFloatingButton();
+        
+      } catch (error) {
+        console.error('Error saving text:', error);
+        if (error.message?.includes('Extension context invalidated')) {
+          // Extension was reloaded, refresh the page
+          window.location.reload();
+        } else {
+          // Show user-friendly message
+          showTooltip('Text saved! Use the extension icon or right-click menu.', {
+            x: e.pageX,
+            y: e.pageY - 50
+          });
+        }
+      }
     });
     
     document.body.appendChild(floatingButton);

@@ -42,6 +42,12 @@ async function initialize() {
   console.log('🚀 Initializing side panel...');
   
   try {
+    // Check for selected text from content script
+    await checkForSelectedText();
+    
+    // Check for last result from session storage
+    await checkForLastResult();
+    
     // Load saved materials
     await loadSavedMaterials();
     
@@ -54,6 +60,74 @@ async function initialize() {
     console.log('✅ Side panel initialized');
   } catch (error) {
     console.error('❌ Initialization error:', error);
+  }
+}
+
+/**
+ * Check for selected text when panel opens
+ */
+async function checkForSelectedText() {
+  try {
+    // Check session storage first
+    const sessionData = await chrome.storage.session.get(['selectedText', 'sourceUrl', 'sourceTitle']);
+    if (sessionData.selectedText) {
+      console.log('📝 Found selected text in session:', sessionData.selectedText.substring(0, 50) + '...');
+      
+      // Display in the input tab
+      customTextInput.value = sessionData.selectedText;
+      
+      // Show a toast notification
+      showToast('Text loaded from selection');
+      
+      // Switch to input tab
+      switchTab('input');
+      
+      // Clear the session storage
+      await chrome.storage.session.remove(['selectedText', 'sourceUrl', 'sourceTitle']);
+      return;
+    }
+    
+    // Check local storage as fallback
+    const localData = await chrome.storage.local.get(['selectedText', 'timestamp']);
+    if (localData.selectedText && localData.timestamp) {
+      // Only use if it's recent (within last 5 minutes)
+      const age = Date.now() - localData.timestamp;
+      if (age < 5 * 60 * 1000) {
+        console.log('📝 Found selected text in local storage:', localData.selectedText.substring(0, 50) + '...');
+        
+        // Display in the input tab
+        customTextInput.value = localData.selectedText;
+        
+        // Show a toast notification
+        showToast('Text loaded from selection');
+        
+        // Switch to input tab
+        switchTab('input');
+        
+        // Clear the local storage
+        await chrome.storage.local.remove(['selectedText', 'timestamp']);
+      }
+    }
+  } catch (error) {
+    console.error('Error checking for selected text:', error);
+  }
+}
+
+/**
+ * Check for last result from context menu action
+ */
+async function checkForLastResult() {
+  try {
+    const data = await chrome.storage.session.get('lastResult');
+    if (data.lastResult) {
+      console.log('📊 Found last result:', data.lastResult.action);
+      showResult(data.lastResult);
+      
+      // Clear the session storage
+      await chrome.storage.session.remove('lastResult');
+    }
+  } catch (error) {
+    console.error('Error checking for last result:', error);
   }
 }
 

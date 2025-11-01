@@ -132,6 +132,7 @@ function createContextMenus() {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   console.log('🖱️ Context menu clicked:', info.menuItemId);
   
+  // Context menu clicks are user gestures, so we can open side panel directly
   try {
     const selectedText = info.selectionText || '';
     
@@ -155,12 +156,23 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         await handleExplain(selectedText, tab);
         break;
       case 'open-panel':
+        // Store text and open panel directly (context menu = user gesture)
+        if (selectedText) {
+          await chrome.storage.session.set({
+            selectedText: selectedText,
+            sourceUrl: tab.url,
+            sourceTitle: tab.title
+          });
+        }
         await chrome.sidePanel.open({ tabId: tab.id });
         break;
     }
   } catch (error) {
     console.error('❌ Context menu handler error:', error);
-    await showNotification('Error', error.message);
+    // Only show notification if API is available
+    if (chrome.notifications) {
+      await showNotification('Error', error.message);
+    }
   }
 });
 
@@ -214,11 +226,56 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
+// Remove duplicate listener - already handled in main message listener
+
 /**
  * Async message handler
  */
 async function handleMessage(message, sender) {
   switch (message.type) {
+    case 'open-panel':
+      // Store text but don't open panel (not a user gesture context)
+      const tab = sender.tab || (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+      const textToUse = message.text || '';
+      
+      if (textToUse) {
+        await chrome.storage.session.set({
+          selectedText: textToUse,
+          sourceUrl: tab?.url || '',
+          sourceTitle: tab?.title || 'Unknown'
+        });
+      }
+      
+      // Send response to content script to handle user action
+      return {
+        success: true,
+        needsUserAction: true,
+        message: 'Text saved. Please use right-click menu or extension icon to open panel.'
+      };
+    
+    case 'SHOW_API_KEY_SETUP':
+      // Open the API key setup page
+      await chrome.tabs.create({
+        url: chrome.runtime.getURL('setup/api-key-setup.html')
+      });
+      return { success: true };
+    
+    case 'API_KEY_SAVED':
+      // Reinitialize AI manager with new key
+      await aiManager.setGeminiApiKey(message.apiKey);
+      console.log('✅ API key saved and AI manager updated');
+      return { success: true };
+    
+    case 'SETUP_COMPLETE':
+      // Setup completed, just acknowledge
+      console.log('✅ Setup completed');
+      return { success: true };
+    
+    case 'SHOW_RESULT':
+      // Handle result display request
+      console.log('📊 Result to show:', message);
+      return { success: true };
+    
     case 'INITIALIZE_AI':
       const capabilities = await aiManager.initialize();
       return { success: true, capabilities };
@@ -316,29 +373,44 @@ async function handleMessage(message, sender) {
 async function handleSummarize(text, tab) {
   if (!text) {
     // Get full page content
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      type: 'GET_PAGE_CONTENT'
-    });
-    text = response?.content || '';
+    try {
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        type: 'GET_PAGE_CONTENT'
+      });
+      text = response?.content || '';
+    } catch (error) {
+      console.warn('Could not get page content:', error);
+      // Try to get text from the page directly
+      const [result] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => document.body.innerText
+      });
+      text = result?.result || '';
+    }
   }
   
   if (!text) {
     throw new Error('No content to summarize');
   }
   
-  const settings = await storageManager.getSettings();
-  const summary = await aiManager.summarize(text, {
-    length: settings.summaryLength
-  });
+  try {
+    const settings = await storageManager.getSettings();
+    const summary = await aiManager.summarize(text, {
+      length: settings.summaryLength
+    });
   
-  // Send result to side panel
-  await chrome.sidePanel.open({ tabId: tab.id });
-  await chrome.runtime.sendMessage({
-    type: 'SHOW_RESULT',
-    action: 'Summarize',
-    result: summary,
-    original: text
-  });
+    // Send result to side panel
+    await chrome.sidePanel.open({ tabId: tab.id });
+    
+    // Store result for side panel to retrieve
+    await chrome.storage.session.set({
+      lastResult: {
+        type: 'SHOW_RESULT',
+        action: 'Summarize',
+        result: summary,
+        original: text
+      }
+    });
   
   // Save if auto-save is enabled
   if (settings.autoSave) {
@@ -351,7 +423,18 @@ async function handleSummarize(text, tab) {
     });
   }
   
-  await storageManager.updateStats('summarize');
+    await storageManager.updateStats('summarize');
+  } catch (error) {
+    // Check if it's an API key error
+    if (error.message.includes('API key') || error.message.includes('Gemini')) {
+      // Open API key setup
+      chrome.tabs.create({
+        url: chrome.runtime.getURL('setup/api-key-setup.html')
+      });
+      throw new Error('Please configure your Gemini API key to use AI features');
+    }
+    throw error;
+  }
 }
 
 async function handleTranslate(text, tab) {
@@ -367,11 +450,15 @@ async function handleTranslate(text, tab) {
   );
   
   await chrome.sidePanel.open({ tabId: tab.id });
-  await chrome.runtime.sendMessage({
-    type: 'SHOW_RESULT',
-    action: 'Translate',
-    result: translation,
-    original: text
+  
+  // Store result for side panel to retrieve
+  await chrome.storage.session.set({
+    lastResult: {
+      type: 'SHOW_RESULT',
+      action: 'Translate',
+      result: translation,
+      original: text
+    }
   });
   
   if (settings.autoSave) {
@@ -407,11 +494,15 @@ async function handleGenerateQuestions(text, tab) {
   );
   
   await chrome.sidePanel.open({ tabId: tab.id });
-  await chrome.runtime.sendMessage({
-    type: 'SHOW_RESULT',
-    action: 'Generate Questions',
-    result: questions,
-    original: text.substring(0, 500)
+  
+  // Store result for side panel to retrieve
+  await chrome.storage.session.set({
+    lastResult: {
+      type: 'SHOW_RESULT',
+      action: 'Generate Questions',
+      result: questions,
+      original: text.substring(0, 500)
+    }
   });
   
   if (settings.autoSave) {
@@ -442,11 +533,15 @@ async function handleGenerateFlashcards(text, tab) {
   const flashcards = await aiManager.generateFlashcards(text, 10);
   
   await chrome.sidePanel.open({ tabId: tab.id });
-  await chrome.runtime.sendMessage({
-    type: 'SHOW_RESULT',
-    action: 'Generate Flashcards',
-    result: flashcards,
-    original: text.substring(0, 500)
+  
+  // Store result for side panel to retrieve
+  await chrome.storage.session.set({
+    lastResult: {
+      type: 'SHOW_RESULT',
+      action: 'Generate Flashcards',
+      result: flashcards,
+      original: text.substring(0, 500)
+    }
   });
   
   const settings = await storageManager.getSettings();
@@ -471,11 +566,15 @@ async function handleProofread(text, tab) {
   const proofread = await aiManager.proofread(text);
   
   await chrome.sidePanel.open({ tabId: tab.id });
-  await chrome.runtime.sendMessage({
-    type: 'SHOW_RESULT',
-    action: 'Proofread',
-    result: proofread,
-    original: text
+  
+  // Store result for side panel to retrieve
+  await chrome.storage.session.set({
+    lastResult: {
+      type: 'SHOW_RESULT',
+      action: 'Proofread',
+      result: proofread,
+      original: text
+    }
   });
   
   await storageManager.updateStats('proofread');
@@ -492,11 +591,15 @@ async function handleExplain(text, tab) {
   );
   
   await chrome.sidePanel.open({ tabId: tab.id });
-  await chrome.runtime.sendMessage({
-    type: 'SHOW_RESULT',
-    action: 'Explain',
-    result: explanation,
-    original: text
+  
+  // Store result for side panel to retrieve
+  await chrome.storage.session.set({
+    lastResult: {
+      type: 'SHOW_RESULT',
+      action: 'Explain',
+      result: explanation,
+      original: text
+    }
   });
   
   const settings = await storageManager.getSettings();
@@ -518,12 +621,17 @@ async function handleExplain(text, tab) {
  */
 async function showNotification(title, message) {
   try {
-    await chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'assets/icons/icon128.png',
-      title,
-      message
-    });
+    // Check if notifications API is available
+    if (chrome.notifications && chrome.notifications.create) {
+      await chrome.notifications.create({
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('assets/icons/icon128.png'),
+        title: title || 'StudySync AI',
+        message: message || 'Notification'
+      });
+    } else {
+      console.log('Notifications not available:', title, message);
+    }
   } catch (error) {
     console.error('❌ Notification error:', error);
   }
@@ -536,3 +644,42 @@ chrome.runtime.onSuspend.addListener(() => {
 });
 
 console.log('✅ Service worker loaded');
+
+/**
+ * Open side panel with selected text
+ */
+async function openSidePanelWithText(text, tab) {
+  try {
+    // Store the selected text for the side panel to retrieve
+    await chrome.storage.session.set({
+      selectedText: text,
+      sourceUrl: tab?.url || '',
+      sourceTitle: tab?.title || 'Unknown'
+    });
+    
+    // Also store in local storage for persistence
+    if (text) {
+      await chrome.storage.local.set({
+        selectedText: text,
+        timestamp: Date.now()
+      });
+    }
+    
+    // Open the side panel - try with tabId first
+    try {
+      await chrome.sidePanel.open({ tabId: tab.id });
+      console.log('✅ Side panel opened with text:', text ? text.substring(0, 50) + '...' : 'No text');
+    } catch (error) {
+      console.warn('Failed with tabId, trying windowId:', error);
+      // Fallback to windowId
+      const window = await chrome.windows.getCurrent();
+      await chrome.sidePanel.open({ windowId: window.id });
+    }
+  } catch (error) {
+    console.error('Error opening side panel:', error);
+    // Fallback: open as a new tab
+    chrome.tabs.create({
+      url: chrome.runtime.getURL('sidepanel/sidepanel.html')
+    });
+  }
+}

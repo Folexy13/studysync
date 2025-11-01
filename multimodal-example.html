@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudySync - Multimodal AI Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .image-upload {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .image-upload:hover {
+            background: #f0f4ff;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 400px;
+            margin: 20px auto;
+            display: block;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 100px;
+            margin: 10px 0;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #e8f5e9;
+            border: 1px solid #4caf50;
+            white-space: pre-wrap;
+        }
+
+        .error {
+            background: #ffebee;
+            border-color: #f44336;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .feature-btn {
+            padding: 15px;
+            text-align: center;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .feature-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .api-config {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 StudySync Multimodal AI Features</h1>
+        <p class="subtitle">Test image analysis and multimodal AI capabilities with your existing extension</p>
+
+        <div class="api-config">
+            <strong>⚙️ Configuration:</strong>
+            <p>API Key: <input type="text" id="api-key" placeholder="Enter your Gemini API key" style="width: 300px; padding: 5px; margin: 0 10px;">
+            <button onclick="saveApiKey()">Save</button></p>
+            <p style="margin-top: 10px; font-size: 14px;">Status: <span id="status">Not configured</span></p>
+        </div>
+
+        <div class="section">
+            <h2>📸 Image Analysis for Study Materials</h2>
+            <p style="margin-bottom: 15px;">Upload an image of your study materials, diagrams, or handwritten notes</p>
+            
+            <div class="image-upload" onclick="document.getElementById('image-input').click()">
+                <p>📁 Click to upload an image</p>
+                <p style="font-size: 14px; color: #666; margin-top: 10px;">Supports: JPG, PNG, GIF, WebP</p>
+            </div>
+            <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+            
+            <img id="image-preview" class="image-preview" style="display: none;">
+            
+            <div class="feature-grid" id="image-features" style="display: none;">
+                <button class="feature-btn" onclick="analyzeImage('explain')">
+                    📖 Explain Content
+                </button>
+                <button class="feature-btn" onclick="analyzeImage('transcribe')">
+                    ✍️ Transcribe Text
+                </button>
+                <button class="feature-btn" onclick="analyzeImage('questions')">
+                    ❓ Generate Questions
+                </button>
+                <button class="feature-btn" onclick="analyzeImage('flashcards')">
+                    🎴 Create Flashcards
+                </button>
+                <button class="feature-btn" onclick="analyzeImage('summary')">
+                    📝 Summarize
+                </button>
+                <button class="feature-btn" onclick="analyzeImage('translate')">
+                    🌐 Translate
+                </button>
+            </div>
+            
+            <div id="image-result" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>💬 Text + Image Combined Analysis</h2>
+            <p>Ask questions about the uploaded image</p>
+            <textarea id="custom-prompt" placeholder="E.g., 'What formulas are shown in this image?' or 'Create a study guide from this diagram'"></textarea>
+            <button onclick="customImageAnalysis()" id="custom-btn" disabled>Analyze with Custom Prompt</button>
+            <div id="custom-result" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>📚 How to Use in Your Extension</h2>
+            <div style="background: #f4f4f4; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 14px;">
+                <pre>// Your existing AI Manager now supports multimodal!
+const aiManager = new AIManager();
+await aiManager.initialize();
+
+// Set your Gemini API key
+await aiManager.setGeminiApiKey('YOUR_API_KEY');
+
+// Analyze an image
+const imageUrl = 'data:image/jpeg;base64,...'; // or URL
+const analysis = await aiManager.analyzeImage(imageUrl, 'Explain this diagram');
+
+// Or use with custom prompt and image
+const imageData = await aiManager.processImage(imageUrl);
+const result = await aiManager.promptWithImage(
+    'Generate study questions from this image',
+    imageData
+);</pre>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import your existing AI Manager
+        import AIManager from './lib/ai-manager.js';
+        
+        let aiManager;
+        let currentImageData = null;
+        
+        // Initialize AI Manager
+        async function initializeAI() {
+            aiManager = new AIManager();
+            await aiManager.initialize();
+            
+            // Load saved API key
+            const savedKey = localStorage.getItem('geminiApiKey');
+            if (savedKey) {
+                document.getElementById('api-key').value = savedKey;
+                await aiManager.setGeminiApiKey(savedKey);
+                updateStatus();
+            }
+        }
+        
+        // Save API key
+        window.saveApiKey = async function() {
+            const apiKey = document.getElementById('api-key').value.trim();
+            if (!apiKey) {
+                alert('Please enter an API key');
+                return;
+            }
+            
+            localStorage.setItem('geminiApiKey', apiKey);
+            await aiManager.setGeminiApiKey(apiKey);
+            updateStatus();
+            alert('API key saved!');
+        }
+        
+        // Update status
+        function updateStatus() {
+            const status = aiManager.getStatus();
+            const statusEl = document.getElementById('status');
+            
+            if (status.geminiConfigured) {
+                statusEl.innerHTML = '✅ Ready (Multimodal enabled with Gemini)';
+                statusEl.style.color = 'green';
+            } else if (status.method === 'chrome-ai') {
+                statusEl.innerHTML = '⚠️ Chrome AI only (no multimodal)';
+                statusEl.style.color = 'orange';
+            } else {
+                statusEl.innerHTML = '❌ Not configured';
+                statusEl.style.color = 'red';
+            }
+        }
+        
+        // Handle image upload
+        window.handleImageUpload = async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const imageUrl = e.target.result;
+                
+                // Show preview
+                const preview = document.getElementById('image-preview');
+                preview.src = imageUrl;
+                preview.style.display = 'block';
+                
+                // Process image for AI
+                currentImageData = await aiManager.processImage(imageUrl);
+                
+                // Show features
+                document.getElementById('image-features').style.display = 'grid';
+                document.getElementById('custom-btn').disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Analyze image with preset prompts
+        window.analyzeImage = async function(type) {
+            if (!currentImageData) {
+                alert('Please upload an image first');
+                return;
+            }
+            
+            if (!aiManager.geminiConfig.apiKey) {
+                alert('Please configure your Gemini API key first');
+                return;
+            }
+            
+            const prompts = {
+                explain: 'Explain what is shown in this image in detail. If it contains study material, explain the concepts.',
+                transcribe: 'Transcribe all text visible in this image. Format it clearly.',
+                questions: 'Generate 5 study questions based on the content in this image.',
+                flashcards: 'Create 5 flashcards from the content in this image. Format: Q: [question] | A: [answer]',
+                summary: 'Summarize the key information shown in this image.',
+                translate: 'Translate any text in this image to Spanish and explain the content.'
+            };
+            
+            const resultDiv = document.getElementById('image-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<span class="loading"></span> Analyzing image...';
+            
+            try {
+                const result = await aiManager.promptWithImage(
+                    prompts[type],
+                    currentImageData
+                );
+                
+                resultDiv.innerHTML = `<strong>${type.toUpperCase()} Result:</strong>\n\n${result}`;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        
+        // Custom image analysis
+        window.customImageAnalysis = async function() {
+            if (!currentImageData) {
+                alert('Please upload an image first');
+                return;
+            }
+            
+            if (!aiManager.geminiConfig.apiKey) {
+                alert('Please configure your Gemini API key first');
+                return;
+            }
+            
+            const prompt = document.getElementById('custom-prompt').value.trim();
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('custom-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<span class="loading"></span> Processing...';
+            
+            try {
+                const result = await aiManager.promptWithImage(prompt, currentImageData);
+                resultDiv.innerHTML = result;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        
+        // Initialize on load
+        initializeAI();
+    </script>
+</body>
+</html>
