@@ -156,7 +156,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         await handleExplain(selectedText, tab);
         break;
       case 'open-panel':
-        // Store text and open panel directly (context menu = user gesture)
+        // Store text and open in new tab (side panel has restrictions)
         if (selectedText) {
           await chrome.storage.session.set({
             selectedText: selectedText,
@@ -164,7 +164,10 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             sourceTitle: tab.title
           });
         }
-        await chrome.sidePanel.open({ tabId: tab.id });
+        // Open in new tab instead of side panel
+        chrome.tabs.create({
+          url: chrome.runtime.getURL('sidepanel/sidepanel.html')
+        });
         break;
     }
   } catch (error) {
@@ -233,6 +236,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  */
 async function handleMessage(message, sender) {
   switch (message.type) {
+    case 'OPEN_SIDEPANEL_WITH_TEXT':
+      // Handle floating button click - try to open side panel
+      const senderTab = sender.tab;
+      if (senderTab && message.text) {
+        try {
+          // Store the text
+          await chrome.storage.session.set({
+            selectedText: message.text,
+            sourceUrl: senderTab.url,
+            sourceTitle: senderTab.title
+          });
+          
+          // Note: We can't open side panel from here (not a user gesture)
+          // But we can guide the user
+          return {
+            success: true,
+            message: 'Text saved. Click extension icon to open side panel.'
+          };
+        } catch (error) {
+          console.error('Error handling floating button:', error);
+          return { success: false, error: error.message };
+        }
+      }
+      return { success: false, error: 'Invalid request' };
+    
     case 'open-panel':
       // Store text but don't open panel (not a user gesture context)
       const tab = sender.tab || (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
@@ -399,10 +427,7 @@ async function handleSummarize(text, tab) {
       length: settings.summaryLength
     });
   
-    // Send result to side panel
-    await chrome.sidePanel.open({ tabId: tab.id });
-    
-    // Store result for side panel to retrieve
+    // Store result for popup to retrieve
     await chrome.storage.session.set({
       lastResult: {
         type: 'SHOW_RESULT',
@@ -411,17 +436,22 @@ async function handleSummarize(text, tab) {
         original: text
       }
     });
-  
-  // Save if auto-save is enabled
-  if (settings.autoSave) {
-    await storageManager.saveStudyMaterial({
-      type: 'summary',
-      content: summary,
-      original: text.substring(0, 500),
-      url: tab.url,
-      title: tab.title
+    
+    // Open results in new tab (side panel has too many restrictions)
+    chrome.tabs.create({
+      url: chrome.runtime.getURL('sidepanel/sidepanel.html')
     });
-  }
+  
+    // Save if auto-save is enabled
+    if (settings.autoSave) {
+      await storageManager.saveStudyMaterial({
+        type: 'summary',
+        content: summary,
+        original: text.substring(0, 500),
+        url: tab.url,
+        title: tab.title
+      });
+    }
   
     await storageManager.updateStats('summarize');
   } catch (error) {
@@ -449,9 +479,7 @@ async function handleTranslate(text, tab) {
     settings.defaultLanguage
   );
   
-  await chrome.sidePanel.open({ tabId: tab.id });
-  
-  // Store result for side panel to retrieve
+  // Store result for popup to retrieve
   await chrome.storage.session.set({
     lastResult: {
       type: 'SHOW_RESULT',
@@ -459,6 +487,11 @@ async function handleTranslate(text, tab) {
       result: translation,
       original: text
     }
+  });
+  
+  // Open results in new tab
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('sidepanel/sidepanel.html')
   });
   
   if (settings.autoSave) {
@@ -493,9 +526,7 @@ async function handleGenerateQuestions(text, tab) {
     settings.difficulty
   );
   
-  await chrome.sidePanel.open({ tabId: tab.id });
-  
-  // Store result for side panel to retrieve
+  // Store result for side panel/popup to retrieve
   await chrome.storage.session.set({
     lastResult: {
       type: 'SHOW_RESULT',
@@ -503,6 +534,11 @@ async function handleGenerateQuestions(text, tab) {
       result: questions,
       original: text.substring(0, 500)
     }
+  });
+  
+  // Open results in new tab (side panel has restrictions)
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('sidepanel/sidepanel.html')
   });
   
   if (settings.autoSave) {
@@ -532,9 +568,7 @@ async function handleGenerateFlashcards(text, tab) {
   
   const flashcards = await aiManager.generateFlashcards(text, 10);
   
-  await chrome.sidePanel.open({ tabId: tab.id });
-  
-  // Store result for side panel to retrieve
+  // Store result for side panel/popup to retrieve
   await chrome.storage.session.set({
     lastResult: {
       type: 'SHOW_RESULT',
@@ -542,6 +576,11 @@ async function handleGenerateFlashcards(text, tab) {
       result: flashcards,
       original: text.substring(0, 500)
     }
+  });
+  
+  // Open results in new tab (side panel has restrictions)
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('sidepanel/sidepanel.html')
   });
   
   const settings = await storageManager.getSettings();
@@ -565,9 +604,7 @@ async function handleProofread(text, tab) {
   
   const proofread = await aiManager.proofread(text);
   
-  await chrome.sidePanel.open({ tabId: tab.id });
-  
-  // Store result for side panel to retrieve
+  // Store result for side panel/popup to retrieve
   await chrome.storage.session.set({
     lastResult: {
       type: 'SHOW_RESULT',
@@ -575,6 +612,11 @@ async function handleProofread(text, tab) {
       result: proofread,
       original: text
     }
+  });
+  
+  // Open results in new tab (side panel has restrictions)
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('sidepanel/sidepanel.html')
   });
   
   await storageManager.updateStats('proofread');
@@ -590,9 +632,7 @@ async function handleExplain(text, tab) {
     { systemPrompt: 'You are an expert at explaining complex topics simply.' }
   );
   
-  await chrome.sidePanel.open({ tabId: tab.id });
-  
-  // Store result for side panel to retrieve
+  // Store result for side panel/popup to retrieve
   await chrome.storage.session.set({
     lastResult: {
       type: 'SHOW_RESULT',
@@ -600,6 +640,11 @@ async function handleExplain(text, tab) {
       result: explanation,
       original: text
     }
+  });
+  
+  // Open results in new tab (side panel has restrictions)
+  chrome.tabs.create({
+    url: chrome.runtime.getURL('sidepanel/sidepanel.html')
   });
   
   const settings = await storageManager.getSettings();
@@ -636,6 +681,23 @@ async function showNotification(title, message) {
     console.error('❌ Notification error:', error);
   }
 }
+
+// Handle extension icon click to open side panel
+chrome.action.onClicked.addListener(async (tab) => {
+  console.log('🎯 Extension icon clicked');
+  
+  try {
+    // Try to open side panel (this is a user gesture so it should work)
+    await chrome.sidePanel.open({ tabId: tab.id });
+    console.log('✅ Side panel opened via icon click');
+  } catch (error) {
+    console.warn('Side panel failed, opening popup as fallback:', error);
+    // Fallback to popup if side panel fails
+    chrome.tabs.create({
+      url: chrome.runtime.getURL('popup/quick-action.html')
+    });
+  }
+});
 
 // Cleanup on shutdown
 chrome.runtime.onSuspend.addListener(() => {

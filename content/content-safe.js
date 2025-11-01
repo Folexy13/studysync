@@ -283,36 +283,61 @@
     }
     
     try {
-      // Try to save to storage
+      // Save text to storage for side panel
       await safeChromCall(async () => {
+        await chrome.storage.session.set({
+          selectedText: selectedText,
+          sourceUrl: window.location.href,
+          sourceTitle: document.title
+        });
+        
+        // Also save to local storage as backup
         await chrome.storage.local.set({
           selectedText: selectedText,
           timestamp: Date.now()
         });
       });
       
-      // Show success message
-      showTooltip('✅ Text saved! Click the StudySync extension icon in your toolbar to process it.', {
-        x: e.pageX,
-        y: e.pageY - 50
-      });
+      // Try to send message to open side panel
+      try {
+        const response = await chrome.runtime.sendMessage({
+          type: 'OPEN_SIDEPANEL_WITH_TEXT',
+          text: selectedText
+        });
+        
+        if (response?.success) {
+          showTooltip('✅ Opening side panel...', {
+            x: e.pageX,
+            y: e.pageY - 50
+          });
+        } else {
+          throw new Error('Could not open side panel');
+        }
+      } catch (msgError) {
+        // Fallback message
+        showTooltip('✅ Text saved! Click the StudySync extension icon to open the side panel.', {
+          x: e.pageX,
+          y: e.pageY - 50
+        });
+      }
       
       hideFloatingButton();
       
     } catch (error) {
-      console.error('Error saving text:', error);
+      console.error('Error:', error);
       
-      // Show fallback message
-      showTooltip('📋 Text copied! Click the StudySync extension icon and paste it there.', {
-        x: e.pageX,
-        y: e.pageY - 50
-      });
-      
-      // Try to copy to clipboard as fallback
+      // Try to copy to clipboard as ultimate fallback
       try {
         await navigator.clipboard.writeText(selectedText);
+        showTooltip('📋 Text copied! Click the StudySync extension icon to process.', {
+          x: e.pageX,
+          y: e.pageY - 50
+        });
       } catch (clipError) {
-        console.error('Clipboard error:', clipError);
+        showTooltip('Please click the StudySync extension icon to process text.', {
+          x: e.pageX,
+          y: e.pageY - 50
+        });
       }
     }
   }
