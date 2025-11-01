@@ -57,6 +57,13 @@ async function initialize() {
     // Listen for results from background
     chrome.runtime.onMessage.addListener(handleMessage);
     
+    // Also check for text every time panel becomes visible
+    document.addEventListener('visibilitychange', async () => {
+      if (!document.hidden) {
+        await checkForSelectedText();
+      }
+    });
+    
     console.log('✅ Side panel initialized');
   } catch (error) {
     console.error('❌ Initialization error:', error);
@@ -68,48 +75,70 @@ async function initialize() {
  */
 async function checkForSelectedText() {
   try {
-    // Check session storage first
+    // Check session storage first (priority)
     const sessionData = await chrome.storage.session.get(['selectedText', 'sourceUrl', 'sourceTitle']);
     if (sessionData.selectedText) {
       console.log('📝 Found selected text in session:', sessionData.selectedText.substring(0, 50) + '...');
       
       // Display in the input tab
-      customTextInput.value = sessionData.selectedText;
+      const inputElement = document.getElementById('customTextInput');
+      if (inputElement) {
+        inputElement.value = sessionData.selectedText;
+        
+        // Show a toast notification
+        showToast('✅ Text loaded from selection!');
+        
+        // Switch to input tab
+        switchTab('input');
+        
+        // Focus on the action select
+        const actionSelect = document.getElementById('actionSelect');
+        if (actionSelect) {
+          actionSelect.focus();
+        }
+      }
       
-      // Show a toast notification
-      showToast('Text loaded from selection');
-      
-      // Switch to input tab
-      switchTab('input');
-      
-      // Clear the session storage
+      // Clear the session storage after use
       await chrome.storage.session.remove(['selectedText', 'sourceUrl', 'sourceTitle']);
-      return;
+      return true;
     }
     
     // Check local storage as fallback
     const localData = await chrome.storage.local.get(['selectedText', 'timestamp']);
     if (localData.selectedText && localData.timestamp) {
-      // Only use if it's recent (within last 5 minutes)
+      // Only use if it's recent (within last 10 minutes)
       const age = Date.now() - localData.timestamp;
-      if (age < 5 * 60 * 1000) {
+      if (age < 10 * 60 * 1000) {
         console.log('📝 Found selected text in local storage:', localData.selectedText.substring(0, 50) + '...');
         
         // Display in the input tab
-        customTextInput.value = localData.selectedText;
+        const inputElement = document.getElementById('customTextInput');
+        if (inputElement) {
+          inputElement.value = localData.selectedText;
+          
+          // Show a toast notification
+          showToast('✅ Text loaded from selection!');
+          
+          // Switch to input tab
+          switchTab('input');
+          
+          // Focus on the action select
+          const actionSelect = document.getElementById('actionSelect');
+          if (actionSelect) {
+            actionSelect.focus();
+          }
+        }
         
-        // Show a toast notification
-        showToast('Text loaded from selection');
-        
-        // Switch to input tab
-        switchTab('input');
-        
-        // Clear the local storage
+        // Clear the local storage after use
         await chrome.storage.local.remove(['selectedText', 'timestamp']);
+        return true;
       }
     }
+    
+    return false;
   } catch (error) {
     console.error('Error checking for selected text:', error);
+    return false;
   }
 }
 
@@ -250,31 +279,83 @@ function showResult(data) {
 function formatResult(text) {
   if (!text) return '';
   
-  // Basic markdown support
+  // First escape HTML to prevent XSS
   let formatted = escapeHtml(text);
   
-  // Headers
-  formatted = formatted.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
-  formatted = formatted.replace(/^# (.*?)$/gm, '<h3>$1</h3>');
+  // Process headers (from most specific to least)
+  formatted = formatted.replace(/^### (.*?)$/gm, '<h4>$1</h4>');
+  formatted = formatted.replace(/^## (.*?)$/gm, '<h3>$1</h3>');
+  formatted = formatted.replace(/^# (.*?)$/gm, '<h2>$1</h2>');
   
-  // Bold
+  // Bold and italic
+  formatted = formatted.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
   formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
   
-  // Lists
-  formatted = formatted.replace(/^\d+\. (.*?)$/gm, '<li>$1</li>');
-  formatted = formatted.replace(/^- (.*?)$/gm, '<li>$1</li>');
+  // Process lists more carefully
+  const lines = formatted.split('\n');
+  let inList = false;
+  let listType = null;
+  let processedLines = [];
   
-  // Wrap consecutive list items in ul/ol
-  formatted = formatted.replace(/(<li>.*?<\/li>\n?)+/gs, '<ul>$&</ul>');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const numberedMatch = line.match(/^(\d+)\.\s+(.*)$/);
+    const bulletMatch = line.match(/^[\*\-\+]\s+(.*)$/);
+    
+    if (numberedMatch) {
+      if (!inList || listType !== 'ol') {
+        if (inList) processedLines.push(`</${listType}>`);
+        processedLines.push('<ol>');
+        inList = true;
+        listType = 'ol';
+      }
+      processedLines.push(`<li>${numberedMatch[2]}</li>`);
+    } else if (bulletMatch) {
+      if (!inList || listType !== 'ul') {
+        if (inList) processedLines.push(`</${listType}>`);
+        processedLines.push('<ul>');
+        inList = true;
+        listType = 'ul';
+      }
+      processedLines.push(`<li>${bulletMatch[1]}</li>`);
+    } else {
+      if (inList) {
+        processedLines.push(`</${listType}>`);
+        inList = false;
+        listType = null;
+      }
+      
+      // Handle paragraphs - don't wrap headers or empty lines
+      if (line.trim() && !line.match(/^<h[1-6]>/)) {
+        // Check if this line and next line form a paragraph
+        if (!line.match(/^<[uo]l>/) && !line.match(/^<\/[uo]l>/)) {
+          processedLines.push(`<p>${line}</p>`);
+        } else {
+          processedLines.push(line);
+        }
+      } else {
+        processedLines.push(line);
+      }
+    }
+  }
   
-  // Paragraphs
-  formatted = formatted.replace(/\n\n/g, '</p><p>');
-  formatted = '<p>' + formatted + '</p>';
+  // Close any open list
+  if (inList) {
+    processedLines.push(`</${listType}>`);
+  }
   
-  // Clean up
-  formatted = formatted.replace(/<p><\/p>/g, '');
-  formatted = formatted.replace(/<p>(<[huo])/g, '$1');
-  formatted = formatted.replace(/(<\/[huo][^>]*>)<\/p>/g, '$1');
+  formatted = processedLines.join('\n');
+  
+  // Clean up empty paragraphs and fix nesting
+  formatted = formatted.replace(/<p>\s*<\/p>/g, '');
+  formatted = formatted.replace(/<p>(<h[1-6]>)/g, '$1');
+  formatted = formatted.replace(/(<\/h[1-6]>)<\/p>/g, '$1');
+  formatted = formatted.replace(/<p>(<[uo]l>)/g, '$1');
+  formatted = formatted.replace(/(<\/[uo]l>)<\/p>/g, '$1');
+  
+  // Add some spacing between elements for readability
+  formatted = formatted.replace(/(<\/[hpuo][^>]*>)/g, '$1\n');
   
   return formatted;
 }

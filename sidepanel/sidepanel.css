@@ -209,26 +209,65 @@ body {
   font-size: 15px;
   line-height: 1.8;
   color: #1f2937;
-  white-space: pre-wrap;
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .result-text h1,
 .result-text h2,
-.result-text h3 {
+.result-text h3,
+.result-text h4 {
   margin-top: 20px;
   margin-bottom: 12px;
   font-weight: 600;
+  line-height: 1.4;
+}
+
+.result-text h1 {
+  font-size: 24px;
+  color: #111827;
+}
+
+.result-text h2 {
+  font-size: 20px;
+  color: #1f2937;
+}
+
+.result-text h3 {
+  font-size: 18px;
+  color: #374151;
+}
+
+.result-text h4 {
+  font-size: 16px;
+  color: #4b5563;
 }
 
 .result-text ul,
 .result-text ol {
-  margin-left: 20px;
-  margin-bottom: 12px;
+  margin: 16px 0;
+  padding-left: 24px;
+}
+
+.result-text li {
+  margin: 6px 0;
+  line-height: 1.7;
 }
 
 .result-text p {
-  margin-bottom: 12px;
+  margin: 12px 0;
+  line-height: 1.8;
+}
+
+.result-text strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.result-text em {
+  font-style: italic;
 }
 
 .result-text code {
@@ -237,6 +276,46 @@ body {
   border-radius: 3px;
   font-family: 'Courier New', monospace;
   font-size: 0.9em;
+  color: #dc2626;
+}
+
+.result-text pre {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+  overflow-x: auto;
+}
+
+.result-text pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+/* Ensure lists don't get cut off */
+.result-text ul li,
+.result-text ol li {
+  display: list-item;
+  list-style-position: outside;
+}
+
+.result-text ul {
+  list-style-type: disc;
+}
+
+.result-text ol {
+  list-style-type: decimal;
+}
+
+/* Fix for nested lists */
+.result-text ul ul,
+.result-text ol ol,
+.result-text ul ol,
+.result-text ol ul {
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 .result-original {
